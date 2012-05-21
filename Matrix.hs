@@ -30,7 +30,7 @@ printMat :: Show a => M a -> IO ()
 printMat = putStrLn . showMat
 
 
--- | basic lensing
+-- lenses
 
 repL :: Lens (M a) [[a]]
 repL = Lens (\m@(M xs d) -> Store (\xs' -> M xs' d) xs)
@@ -66,42 +66,37 @@ diagL = l . repL
     weave _ _ _ = absurd
 
 
--- | intermediate lensing
+-- | think of row / column
+data RC = R | C
 
-type Proj a = Int -> Lens (M a) [a]
+lineL :: RC -> Int -> Lens (M a) [a]
+lineL R = rowL
+lineL C = colL
 
-gswap :: Proj a -> Int -> Int -> M a -> M a
-gswap p i j = swapIntL (p i) (p j)
+colineL :: RC -> Int -> Lens (M a) [a]
+colineL = lineL . toggle
 
-gmul :: Mult a => Proj a -> Int -> a -> M a -> M a
-gmul p i a = modify (p i) (map (*a))
+toggle :: RC -> RC
+toggle R = C
+toggle C = R
 
-gadd :: Plus a => Proj a -> Int -> Int -> M a -> M a
-gadd p i_from i_to m =
-  let line = get (p i_from) m
-  in  modify (p i_to) (\line' -> zipWith (+) line line') m
+-- matrix operations
 
-gmuladd :: (Plus a, Mult a) => Proj a -> Int -> Int -> a -> M a -> M a
-gmuladd p i_from i_to a m =
-  let line = map (*a) $ get (p i_from) m
-  in  modify (p i_to) (\line' -> zipWith (+) line line') m
+mat_muladd :: (Mult a, Plus a) => RC -> Int -> Int -> a -> M a -> M a
+mat_muladd rc i_from i_to a mat =
+  let l = map (*a) $ get (lineL rc i_from) mat
+  in  modify (lineL rc i_to) (zipWith (+) l) mat
 
-col_swap, row_swap :: Int -> Int -> M a -> M a
-col_swap = gswap colL
-row_swap = gswap rowL
+mat_add :: Plus a => RC -> Int -> Int -> M a -> M a
+mat_add rc i_from i_to mat =
+  let l = get (lineL rc i_from) mat
+  in  modify (lineL rc i_to) (zipWith (+) l) mat
 
-col_mul, row_mul :: Mult a => Int -> a -> M a -> M a
-col_mul = gmul colL
-row_mul = gmul rowL
+mat_mul :: Mult a => RC -> Int -> a -> M a -> M a
+mat_mul rc i a = modify (lineL rc i) (map (*a))
 
-col_add, row_add :: Plus a => Int -> Int -> M a -> M a
-col_add = gadd colL
-row_add = gadd rowL
+mat_swap :: RC -> Int -> Int -> M a -> M a
+mat_swap rc i j = swapIntL (lineL rc i) (lineL rc j)
 
-col_muladd, row_muladd :: (Mult a, Plus a) => Int -> Int -> a -> M a -> M a
-col_muladd = gmuladd colL
-row_muladd = gmuladd rowL
-
-
-entry :: Int -> Int -> Lens (M a) a
-entry i j = listL j . listL i . repL
+entryL :: Int -> Int -> Lens (M a) a
+entryL i j = listL j . listL i . repL

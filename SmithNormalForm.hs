@@ -19,6 +19,7 @@ a,b :: M Integer
 a = mkMat (3,4) [[4,5,6,0],[7,8,10,3],[40,30,1,11]]
 b = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 
+
 -- | The Algorithm
 --   
 --   If the input matrix is already is Smith normal form, nothing needs to be done.
@@ -40,52 +41,33 @@ smith m@(M _ (x,y))
 --   
 step :: (DivRing a, Eq a, Ord a, Abs a) => Int -> M a -> M a
 step i mat
-  | not (row_clear i mat) = step i (row_step i mat)
-  | not (col_clear i mat) = step i (col_step i mat)
-  | (get (entry i i) mat) < zero = positify i mat
-  | otherwise             = mat
+  | not (clear R i mat) = step i (elim R i mat)
+  | not (clear C i mat) = step i (elim C i mat)
+  | (get (entryL i i) mat) < zero = positify i mat
+  | otherwise           = mat
 
   where
-  row_clear i = line_zero . drop (i+1) . get (rowL i)
-  col_clear i = line_zero . drop (i+1) . get (colL i)
+  clear rc i = line_zero . drop (i+1) . get ((lineL rc) i)
 
-  row_step    = gstep row_clear row_elim
-  col_step    = gstep col_clear col_elim
-
-  row_elim    = gelim rowL colL
-  col_elim    = gelim colL rowL
-
--- | Single Step function
---
-gstep :: (DivRing a, Eq a, Ord a, Abs a)
-      => (Int -> M a -> Bool)
-      -> (Int -> M a -> M a)
-      ->  Int -> M a -> M a
-gstep line_clear line_elim i mat =
-  P.until (line_clear i)
-          (\mat' ->
-            let (x,y) = snd $ mat_find_minimum_nonzero i mat'
-            in  (line_elim i . positify i . col_swap i y . row_swap i x) mat')
-          mat
+  elim rc i = P.until (clear rc i) $ \mat' ->
+                let (x,y) = snd $ mat_find_minimum_nonzero i mat'
+                in  (elim_step rc i . positify i . mat_swap C i y . mat_swap R i x) mat'
 
 -- | Elimination algorithm
 --
 --   a generic function which eliminates the i-th column or row
 --
-gelim :: (Eq a, DivRing a)
-       => (Int -> Lens (M a) [a])
-       -> (Int -> Lens (M a) [a])
-       -> Int -> M a -> M a
-gelim lineL coLineL i mat =
+elim_step :: (Eq a, DivRing a)
+       => RC -> Int -> M a -> M a
+elim_step rc i mat =
   let
-    pivot_line = get (coLineL i) mat
-    pivot = get (listL i) pivot_line
+    pivot = get (entryL i i) mat
+    elim_entries = drop (i+1) (zip [0..] (get (lineL rc i) mat))
 
-    elim_entries = drop (i+1) (zip [0..] (get (lineL i) mat))
     elim_function = compose $
      do (j,x) <- elim_entries
         let (p,_) = quotRem x pivot
-        return $ modify (coLineL j) (zipWith (+) (map (*(negate p)) pivot_line))
+        return $ mat_muladd (toggle rc) i j (negate p)
   in elim_function mat
 
 
@@ -93,7 +75,7 @@ gelim lineL coLineL i mat =
 --
 positify :: (Mult a, Plus a, Neg a, Ord a) => Int -> M a -> M a
 positify i mat =
-  if get (entry i i) mat < zero 
+  if get (entryL i i) mat < zero 
      then modify (rowL i) (map (*(negate one))) mat
      else mat
 
@@ -104,7 +86,7 @@ isSmith mat@(M _ (m,n)) =
      m == 0
   || n == 0
   || mat_zero mat
-  || ( and [get (entry i j) mat == zero || i == j | i <- [0..m-1], j <- [0..n-1]]
+  || ( and [get (entryL i j) mat == zero || i == j | i <- [0..m-1], j <- [0..n-1]]
       && validDiag (get diagL mat))
   where
     validDiag (x:y:xs) = (y == zero || (x /= zero && snd (quotRem y x) == zero)) && validDiag (y:xs)
