@@ -1,5 +1,5 @@
 import qualified Prelude as P
-import Prelude (Integer, Int, error, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not)
+import Prelude (Integer, Int, error, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not, id)
 
 import Data.List
 import Data.Monoid
@@ -18,16 +18,62 @@ a,b :: M Integer
 a = mkMat (3,4) [[4,5,6,0],[7,8,10,3],[40,30,1,11]]
 b = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 
--- | main algorithm
+-- | The Algorithm
+--   
+--   If the input matrix is already is Smith normal form, nothing needs to be done.
+--   Otherwise the result matrix is recursively calculated, by calculating the first
+--   row and column and then solving the smaller problem for the (1,1)-minor
+--
+--   For an (MxN)-matrix this takes min(M,N) recursive steps.
+--
 smith :: (Eq a, Ord a, Abs a, DivRing a) => M a -> M a
 smith m@(M _ (x,y))
   | isSmith m = m
-  | otherwise = let r = min x y
-                    smith' = (appEndo . mconcat) [Endo (step (r-i-1)) | i <- [0..r-1]]
-                in smith' m
+  | otherwise = (foldr (flip (.)) id) (map step [0..min x y - 1]) m
 
 
--- | a generic function which eliminates the i-th column or row
+-- | Recursive Step function
+--
+--   this function clears the i-th row and column, assuming all the 
+--   preceding lines and columns have been cleaned up
+--   
+step :: (DivRing a, Eq a, Ord a, Abs a) => Int -> M a -> M a
+step i mat
+  | not (row_clear i mat) = step i (row_step i mat)
+  | not (col_clear i mat) = step i (col_step i mat)
+  | (get (entry i i) mat) < zero = positify i mat
+  | otherwise             = mat
+
+  where
+  row_clear i = line_zero . drop (i+1) . get (rowL i)
+  col_clear i = line_zero . drop (i+1) . get (colL i)
+
+  row_step    = gstep row_clear row_elim
+  col_step    = gstep col_clear col_elim
+
+  row_elim    = gelim rowL colL
+  col_elim    = gelim colL rowL
+
+-- | Single Step function
+--
+gstep :: (DivRing a, Eq a, Ord a, Abs a)
+      => (Int -> M a -> Bool)
+      -> (Int -> M a -> M a)
+      -> Int -> M a -> M a
+gstep line_clear line_elim i mat =
+  P.until (line_clear i) (\mat' ->
+          let (x,y) = snd $ mat_find_minimum_nonzero i mat'
+          in  line_elim i
+            . positify i
+            . col_swap i y
+            . row_swap i x
+            $ mat'
+            ) mat
+
+-- | Elimination algorithm
+--
+--   a generic function which eliminates the i-th column or row
+--
 gelim :: (Eq a, DivRing a)
        => (Int -> Lens (M a) [a])
        -> (Int -> Lens (M a) [a])
@@ -44,59 +90,24 @@ gelim lineL coLineL i mat =
         return $ Endo $ modify (coLineL j) (\coLine' -> zipWith (+) coLine' (map (*(negate p)) pivot_line))
   in elim_function mat
 
-row_elim :: (Eq a, DivRing a) => Int -> M a -> M a
-row_elim = gelim rowL colL
 
-col_elim :: (Eq a, DivRing a) => Int -> M a -> M a
-col_elim = gelim colL rowL
 
+
+-- | If the (i,i) element is negative multiply the i-th line by -1
+--
 positify :: (Mult a, Plus a, Neg a, Ord a) => Int -> M a -> M a
 positify i mat =
   if get (entry i i) mat < zero 
      then modify (rowL i) (map (*(negate one))) mat
      else mat
 
--- | this function clears the i-th row and column, assuming all the 
---   preceding lines and columns have been cleaned up
---   
---   the Smith algorithm is just this function repeatedly (min(m,n) times) applied
---   on an mxn-dimensional matrix (from i=0 until i=min(m,n)-1)
-step :: (DivRing a, Eq a, Ord a, Abs a) => Int -> M a -> M a
-step i mat
-  | not (row_clear i mat) = step i (row_step i mat)
-  | not (col_clear i mat) = step i (col_step i mat)
-  | (get (entry i i) mat) < zero = positify i mat
-  | otherwise             = mat
 
 
--- generic iterative elimination step
-gstep :: (DivRing a, Eq a, Ord a, Abs a)
-      => (Int -> M a -> Bool)
-      -> (Int -> M a -> M a)
-      -> Int -> M a -> M a
-gstep line_clear line_elim i mat =
-  P.until (line_clear i) (\mat' ->
-          let (x,y) = snd $ mat_find_minimum_nonzero i mat'
-          in  line_elim i
-            . positify i
-            . col_swap i y
-            . row_swap i x
-            $ mat'
-            ) mat
 
-row_step :: (DivRing a, Eq a, Ord a, Abs a) => Int -> M a -> M a
-row_step = gstep row_clear row_elim
 
-row_clear :: (Plus a, Eq a) => Int -> M a -> Bool
-row_clear i = line_zero . drop (i+1) . get (rowL i)
 
-col_step :: (DivRing a, Eq a, Ord a, Abs a) => Int -> M a -> M a
-col_step = gstep col_clear col_elim
-
-col_clear :: (Plus a, Eq a) => Int -> M a -> Bool
-col_clear i = line_zero . drop (i+1) . get (colL i)
-
--- | check for smithness
+-- | check for Smithness
+--
 isSmith :: (Eq a, Plus a, Div a, Neg a) => M a -> Bool
 isSmith mat@(M _ (m,n)) =
      m == 0
