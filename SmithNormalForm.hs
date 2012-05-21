@@ -9,6 +9,7 @@ import Control.Monad
 import Absurd
 import Algebra
 import Bound
+import Compose
 import Lens
 import Lens.List
 import Matrix
@@ -29,7 +30,7 @@ b = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 smith :: (Eq a, Ord a, Abs a, DivRing a) => M a -> M a
 smith m@(M _ (x,y))
   | isSmith m = m
-  | otherwise = (foldr (flip (.)) id) (map step [0..min x y - 1]) m
+  | otherwise = compose (map step [0 .. min x y - 1]) m
 
 
 -- | Recursive Step function
@@ -59,16 +60,13 @@ step i mat
 gstep :: (DivRing a, Eq a, Ord a, Abs a)
       => (Int -> M a -> Bool)
       -> (Int -> M a -> M a)
-      -> Int -> M a -> M a
+      ->  Int -> M a -> M a
 gstep line_clear line_elim i mat =
-  P.until (line_clear i) (\mat' ->
-          let (x,y) = snd $ mat_find_minimum_nonzero i mat'
-          in  line_elim i
-            . positify i
-            . col_swap i y
-            . row_swap i x
-            $ mat'
-            ) mat
+  P.until (line_clear i)
+          (\mat' ->
+            let (x,y) = snd $ mat_find_minimum_nonzero i mat'
+            in  (line_elim i . positify i . col_swap i y . row_swap i x) mat')
+          mat
 
 -- | Elimination algorithm
 --
@@ -84,13 +82,11 @@ gelim lineL coLineL i mat =
     pivot = get (listL i) pivot_line
 
     elim_entries = drop (i+1) (zip [0..] (get (lineL i) mat))
-    elim_function = appEndo . mconcat $
+    elim_function = compose $
      do (j,x) <- elim_entries
         let (p,_) = quotRem x pivot
-        return $ Endo $ modify (coLineL j) (\coLine' -> zipWith (+) coLine' (map (*(negate p)) pivot_line))
+        return $ modify (coLineL j) (zipWith (+) (map (*(negate p)) pivot_line))
   in elim_function mat
-
-
 
 
 -- | If the (i,i) element is negative multiply the i-th line by -1
@@ -100,11 +96,6 @@ positify i mat =
   if get (entry i i) mat < zero 
      then modify (rowL i) (map (*(negate one))) mat
      else mat
-
-
-
-
-
 
 -- | check for Smithness
 --
@@ -128,9 +119,10 @@ mat_find_minimum_nonzero i mat =
        PositiveInfinity -> error "zero matrix"
        NegativeInfinity -> absurd
 
-min_nonzero_in_line :: (Ord a, Abs a)  => [Bound a] -> Bound (a, Int)
-min_nonzero_in_line = foldr min PositiveInfinity . map bseqL . flip zip [0..] . map abs
+  where
+  min_nonzero_in_line :: (Ord a, Abs a)  => [Bound a] -> Bound (a, Int)
+  min_nonzero_in_line = foldr min PositiveInfinity . map bseqL . flip zip [0..] . map abs
 
--- map zero to upper bound
-zeros_to_infty :: (Ord a, Plus a) => [a] -> [Bound a]
-zeros_to_infty = map (\x -> if x == zero then PositiveInfinity else Bound x)
+  -- map zero to upper bound
+  zeros_to_infty :: (Ord a, Plus a) => [a] -> [Bound a]
+  zeros_to_infty = map (\x -> if x == zero then PositiveInfinity else Bound x)
