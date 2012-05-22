@@ -62,8 +62,8 @@ elim_step :: DivRing a => RC -> Int -> M a -> M a
 elim_step rc i mat =
   let
     pivot = get (entryL i i) mat
-    elim_entries = drop (i+1) (zip [0..] (get (lineL rc i) mat))
-  in compose [ mat_muladd (toggle rc) i j (negate q) | (j,x) <- elim_entries , let (q,_) = quotRem x pivot] mat
+    elim_coline j x = mat_muladd (toggle rc) i j (negate q) where (q,_) = quotRem x pivot
+  in flip compose mat $ zipWith elim_coline [i+1..] (drop (i+1) $ get (lineL rc i) mat)
 
 
 -- | find absolute minimum, which is nonzero
