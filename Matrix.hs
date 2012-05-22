@@ -23,11 +23,8 @@ mat_zero (M xs _) = all (all (==zero)) xs
 line_zero :: (Eq a, Plus a) => [a] -> Bool
 line_zero = all (==zero)
 
-showMat :: Show a => M a -> String
-showMat (M xs _) = "[" ++ (intercalate ";\n " . map (intercalate "\t" . map show)) xs ++ "]"
-
-printMat :: Show a => M a -> IO ()
-printMat = putStrLn . showMat
+instance Show a => Show (M a) where
+    show (M xs _) = "[" ++ (intercalate ";\n " . map (intercalate "\t" . map show)) xs ++ "]"
 
 
 -- lenses

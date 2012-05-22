@@ -2,8 +2,6 @@ module Bound where
 
 import Prelude hiding (abs)
 
-import Algebra
-
 data Bound a = NegativeInfinity | PositiveInfinity | Bound a
 
 instance Eq a => Eq (Bound a) where
@@ -31,8 +29,3 @@ instance Show a => Show (Bound a) where
     show PositiveInfinity = "infty"
     show NegativeInfinity = "-infty"
     show (Bound a)   = show a
-
-instance Abs a => Abs (Bound a) where
-    abs PositiveInfinity = PositiveInfinity
-    abs NegativeInfinity = PositiveInfinity
-    abs (Bound a)   = Bound (abs a)

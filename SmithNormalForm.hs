@@ -1,16 +1,20 @@
 import qualified Prelude as P
-import Prelude (Integer, Int, error, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not, id)
+import Prelude (Integer, Int, error, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not, id, fst)
 
-import Data.List
 import Control.Monad
+import Data.List
+import Data.Maybe (isJust)
+import Data.Ord
 
 
 import Absurd
 import Algebra
 import Bound
 import Compose
+import Indexed
 import Lens
 import Matrix
+import Tuple
 
 
 test1, test2 :: M Integer
@@ -48,7 +52,7 @@ step i mat
   clear rc j = line_zero . drop (j+1) . get ((lineL rc) j)
 
   elim rc j = P.until (clear rc i) $ \mat' ->
-                let (x,y) = snd $ mat_find_minimum_nonzero i mat'
+                let (x,y) = minimum_by_abs i mat'
                 in  (elim_step rc j . positify j . mat_swap C j y . mat_swap R j x) mat'
 
 -- | Elimination algorithm
@@ -92,17 +96,12 @@ isSmith mat@(M _ (m,n)) =
 
 
 -- | find absolute minimum, which is nonzero
-mat_find_minimum_nonzero :: (Ord a, Abs a, Plus a) => Int -> M a -> (a, (Int, Int))
-mat_find_minimum_nonzero i mat =
-  case (min_nonzero_in_line . map (min_nonzero_in_line . zeros_to_infty) . map (drop i) . drop i) (get repL mat) of
-       Bound ((a,y),x) -> (a,(x+i,y+i))
-       PositiveInfinity -> error "zero matrix"
-       NegativeInfinity -> absurd
+minimum_by_abs :: (Ord a, Abs a, Plus a) => Int -> M a -> (Int, Int)
+minimum_by_abs i mat =
+  case (filter (isJust . snd) . map (id *** abs) . concat . restrict_search i . enumerate2d) (get repL mat) of
+       [] -> error "zero matrix"
+       xs -> fst (minimumBy (comparing snd) xs)
 
   where
-  min_nonzero_in_line :: (Ord a, Abs a)  => [Bound a] -> Bound (a, Int)
-  min_nonzero_in_line = foldr min PositiveInfinity . map bseqL . flip zip [0..] . map abs
-
-  -- map zero to upper bound
-  zeros_to_infty :: (Ord a, Plus a) => [a] -> [Bound a]
-  zeros_to_infty = map (\x -> if x == zero then PositiveInfinity else Bound x)
+  restrict_search :: Int -> [[a]] -> [[a]]
+  restrict_search i = map (drop i) . drop i
