@@ -22,11 +22,14 @@ test2 = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 
 -- | The Algorithm
 --   
---   If the input matrix is already is Smith normal form, nothing needs to be done.
---   Otherwise the result matrix is recursively calculated, by calculating the first
+--   The result matrix is recursively calculated, by calculating the first
 --   row and column and then solving the smaller problem for the (1,1)-minor
 --
 --   For an (MxN)-matrix this takes min(M,N) recursive steps.
+--
+--   Let r = min(M,N), then smith yields just
+--      
+--      step r . step (r-1) . … . step 2 . step 1
 --
 smith :: (Eq a, Ord a, Abs a, DivRing a) => M a -> M a
 smith m@(M _ (x,y)) = compose (map step [0 .. min x y - 1]) m
@@ -88,4 +91,4 @@ minimum_by_abs i mat =
 
   where
   restrict_search :: Int -> [[a]] -> [[a]]
-  restrict_search i = map (drop i) . drop i
+  restrict_search j = map (drop j) . drop j
