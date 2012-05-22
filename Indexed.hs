@@ -8,8 +8,8 @@ ixmap :: Integral i => (i -> a -> b) -> [a] -> [b]
 ixmap fi xs = unfoldr gen seed
     where
     seed = (0, xs)
-    gen (n,[]) = Nothing
-    gen (n,x:xs) = Just (fi n x, (n+1,xs))
+    gen (_,[]) = Nothing
+    gen (n,x:xr) = Just (fi n x, (n+1,xr))
 
 
 enumerate :: Integral i => [a] -> [(i,a)]
@@ -29,4 +29,4 @@ enumerate3d :: Integral i => [[[a]]] -> [[[((i,i,i),a)]]]
 enumerate3d = ixmap (\x ->
               ixmap (\y ->
               ixmap (\z ->
-                \elem -> ((x,y,z),elem))))
+                \element -> ((x,y,z),element))))

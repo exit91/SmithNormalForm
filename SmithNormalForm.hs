@@ -1,5 +1,5 @@
 import qualified Prelude as P
-import Prelude (Integer, Int, error, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not, id, fst)
+import Prelude (Integer, Int, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not, id, fst, Maybe(..))
 
 import Control.Monad
 import Data.List
@@ -7,7 +7,6 @@ import Data.Maybe (isJust)
 import Data.Ord
 
 
-import Absurd
 import Algebra
 import Compose
 import Indexed
@@ -51,8 +50,9 @@ step i mat
   clear rc j = line_zero . drop (j+1) . get ((lineL rc) j)
 
   elim rc j = P.until (clear rc i) $ \mat' ->
-                let (x,y) = minimum_by_abs i mat'
-                in  (elim_step rc j . positify j . mat_swap C j y . mat_swap R j x) mat'
+                case minimum_by_abs i mat' of
+                     Just (x,y) -> (elim_step rc j . positify j . mat_swap C j y . mat_swap R j x) mat'
+                     Nothing    -> mat'
 
 -- | Elimination algorithm
 --
@@ -95,11 +95,12 @@ isSmith mat@(M _ (m,n)) =
 
 
 -- | find absolute minimum, which is nonzero
-minimum_by_abs :: (Ord a, Abs a, Plus a) => Int -> M a -> (Int, Int)
+--   if the submatrix is zero then Nothing is returned
+minimum_by_abs :: (Ord a, Abs a, Plus a) => Int -> M a -> Maybe (Int, Int)
 minimum_by_abs i mat =
   case (filter (isJust . snd) . map (id *** abs) . concat . restrict_search i . enumerate2d) (get repL mat) of
-       [] -> error "zero matrix"
-       xs -> fst (minimumBy (comparing snd) xs)
+       [] -> Nothing
+       xs -> (Just . fst . minimumBy (comparing snd)) xs
 
   where
   restrict_search :: Int -> [[a]] -> [[a]]
