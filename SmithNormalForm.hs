@@ -29,9 +29,7 @@ test2 = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 --   For an (MxN)-matrix this takes min(M,N) recursive steps.
 --
 smith :: (Eq a, Ord a, Abs a, DivRing a) => M a -> M a
-smith m@(M _ (x,y))
-  | isSmith m = m
-  | otherwise = compose (map step [0 .. min x y - 1]) m
+smith m@(M _ (x,y)) = compose (map step [0 .. min x y - 1]) m
 
 
 -- | Recursive Step function
@@ -79,20 +77,6 @@ positify i mat =
   if get (entryL i i) mat < zero 
      then modify (rowL i) (map (*(negate one))) mat
      else mat
-
--- | check for Smithness
---
-isSmith :: (Eq a, Plus a, Div a, Neg a) => M a -> Bool
-isSmith mat@(M _ (m,n)) =
-     m == 0
-  || n == 0
-  || mat_zero mat
-  || ( and [get (entryL i j) mat == zero || i == j | i <- [0..m-1], j <- [0..n-1]]
-      && validDiag (get diagL mat))
-  where
-    validDiag (x:y:xs) = (y == zero || (x /= zero && snd (quotRem y x) == zero)) && validDiag (y:xs)
-    validDiag _ = True
-
 
 -- | find absolute minimum, which is nonzero
 --   if the submatrix is zero then Nothing is returned
