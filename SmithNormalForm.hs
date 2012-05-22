@@ -31,7 +31,7 @@ test2 = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 --      
 --      step r . step (r-1) . … . step 2 . step 1
 --
-smith :: (Eq a, Ord a, Abs a, DivRing a) => M a -> M a
+smith :: (Ord a, DivRing a) => M a -> M a
 smith m@(M _ (x,y)) = compose (map step [0 .. min x y - 1]) m
 
 
@@ -40,7 +40,7 @@ smith m@(M _ (x,y)) = compose (map step [0 .. min x y - 1]) m
 --   this function clears the i-th row and column, assuming all the 
 --   preceding lines and columns have been cleaned up
 --   
-step :: (DivRing a, Eq a, Ord a, Abs a) => Int -> M a -> M a
+step :: (DivRing a, Ord a) => Int -> M a -> M a
 step i mat
   | not (clear R i mat) = step i (elim R i mat)
   | not (clear C i mat) = step i (elim C i mat)
@@ -59,8 +59,7 @@ step i mat
 --
 --   a generic function which eliminates the i-th column or row
 --
-elim_step :: (Eq a, DivRing a)
-       => RC -> Int -> M a -> M a
+elim_step :: DivRing a => RC -> Int -> M a -> M a
 elim_step rc i mat =
   let
     pivot = get (entryL i i) mat
@@ -68,22 +67,21 @@ elim_step rc i mat =
 
     elim_function = compose $
      do (j,x) <- elim_entries
-        let (p,_) = quotRem x pivot
-        return $ mat_muladd (toggle rc) i j (negate p)
+        let (q,_) = quotRem x pivot
+        return $ mat_muladd (toggle rc) i j (negate q)
   in elim_function mat
 
 
 -- | If the (i,i) element is negative multiply the i-th line by -1
 --
 positify :: (Mult a, Plus a, Neg a, Ord a) => Int -> M a -> M a
-positify i mat =
-  if get (entryL i i) mat < zero 
-     then modify (rowL i) (map (*(negate one))) mat
-     else mat
+positify i mat
+  | get (entryL i i) mat < zero = mat_mul R i (negate one) mat
+  | otherwise                   = mat
 
 -- | find absolute minimum, which is nonzero
 --   if the submatrix is zero then Nothing is returned
-minimum_by_abs :: (Ord a, Abs a, Plus a) => Int -> M a -> Maybe (Int, Int)
+minimum_by_abs :: Abs a => Int -> M a -> Maybe (Int, Int)
 minimum_by_abs i mat =
   case (filter (isJust . snd) . map (id *** abs) . concat . restrict_search i . enumerate2d) (get repL mat) of
        [] -> Nothing

@@ -62,6 +62,8 @@ diagL = l . repL
         in  (as ++ x:bs) : weave (i+1) xs xxr
     weave _ _ _ = absurd
 
+entryL :: Int -> Int -> Lens (M a) a
+entryL i j = listL j . listL i . repL
 
 -- | think of row / column
 data RC = R | C
@@ -94,6 +96,3 @@ mat_mul rc i a = modify (lineL rc i) (map (*a))
 
 mat_swap :: RC -> Int -> Int -> M a -> M a
 mat_swap rc i j = swapIntL (lineL rc i) (lineL rc j)
-
-entryL :: Int -> Int -> Lens (M a) a
-entryL i j = listL j . listL i . repL

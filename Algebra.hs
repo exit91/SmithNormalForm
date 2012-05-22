@@ -26,7 +26,7 @@ class Neg t where
 (-) :: (Neg t, Plus t) => t -> t -> t
 a - b = a + negate b
 
-class (Plus a, Mult a, Div a, Neg a) => DivRing a where
+class (Plus a, Mult a, Div a, Neg a, Abs a) => DivRing a
 
 class Abs t where
     abs :: t -> Maybe Natural
