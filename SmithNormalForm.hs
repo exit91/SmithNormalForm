@@ -2,7 +2,6 @@ import qualified Prelude as P
 import Prelude (Integer, Int, error, Eq(..), (&&), otherwise, (.), Show(..), String, IO, putStrLn, undefined, Ord(..),flip,Bool(..), Ordering(..), (||),(&&), and, snd, ($), not, id)
 
 import Data.List
-import Data.Monoid
 import Control.Monad
 
 
@@ -11,13 +10,12 @@ import Algebra
 import Bound
 import Compose
 import Lens
-import Lens.List
 import Matrix
 
 
-a,b :: M Integer
-a = mkMat (3,4) [[4,5,6,0],[7,8,10,3],[40,30,1,11]]
-b = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
+test1, test2 :: M Integer
+test1 = mkMat (3,4) [[4,5,6,0],[7,8,10,3],[40,30,1,11]]
+test2 = mkMat (3,4) [[3,6,9,0],[12,15,-3,12],[6,-6,18,-27]]
 
 
 -- | The Algorithm
@@ -47,11 +45,11 @@ step i mat
   | otherwise           = mat
 
   where
-  clear rc i = line_zero . drop (i+1) . get ((lineL rc) i)
+  clear rc j = line_zero . drop (j+1) . get ((lineL rc) j)
 
-  elim rc i = P.until (clear rc i) $ \mat' ->
+  elim rc j = P.until (clear rc i) $ \mat' ->
                 let (x,y) = snd $ mat_find_minimum_nonzero i mat'
-                in  (elim_step rc i . positify i . mat_swap C i y . mat_swap R i x) mat'
+                in  (elim_step rc j . positify j . mat_swap C j y . mat_swap R j x) mat'
 
 -- | Elimination algorithm
 --

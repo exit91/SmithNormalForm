@@ -33,7 +33,7 @@ printMat = putStrLn . showMat
 -- lenses
 
 repL :: Lens (M a) [[a]]
-repL = Lens (\m@(M xs d) -> Store (\xs' -> M xs' d) xs)
+repL = Lens (\(M xs d) -> Store (\xs' -> M xs' d) xs)
 
 rowL :: Int -> Lens (M a) [a]
 rowL i = listL i . repL
@@ -52,14 +52,14 @@ diagL = l . repL
         in  Store (\diag' -> weave 0 diag' rest) diag
 
 
-    extract n _ diag rest [] = (reverse diag, reverse rest)
+    extract _ _ diag rest [] = (reverse diag, reverse rest)
     extract n i diag rest (xs:xxr) =
         if i >= n
            then (reverse diag, reverse rest ++ xxr)
            else let (as,b:bs) = splitAt i xs
                 in  extract n (i+1) (b:diag) ((as++bs) : rest) xxr
 
-    weave i [] rest = rest
+    weave _ [] rest = rest
     weave i (x:xs) (xr:xxr) =
         let (as,bs) = splitAt i xr
         in  (as ++ x:bs) : weave (i+1) xs xxr
