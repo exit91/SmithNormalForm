@@ -9,7 +9,6 @@ import Data.Ord
 
 import Absurd
 import Algebra
-import Bound
 import Compose
 import Indexed
 import Lens

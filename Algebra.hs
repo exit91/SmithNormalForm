@@ -3,7 +3,6 @@ module Algebra where
 import qualified Prelude as P
 import Prelude (Integer, Int, Maybe(..))
 
-import Bound
 import Natural
 import Tuple
 
